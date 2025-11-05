@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <title>Visor Estereoscópico SBS</title>
+
+  <style>
+    :root{
+      --bg:#0a0a0a; --fg:#eaeaea; --muted:#b7b7b7;
+      --card:#141414; --ink:#0b1220;
+      --accent:#00d1ff; --accent-2:#7c4dff;
+      --divider:2px;              /* grosor del divisor central */
+      --gap:0px;                  /* separación ajustable */
+      --app-h:100dvh;             /* altura real en móviles */
+      --safe-top: env(safe-area-inset-top);
+      --safe-right: env(safe-area-inset-right);
+      --safe-bottom: env(safe-area-inset-bottom);
+      --safe-left: env(safe-area-inset-left);
+    }
+
+    *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+    html,body{ height:100%; }
+    body{
+      margin:0; background:var(--bg); color:var(--fg);
+      font: 15px/1.55 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+      display:flex; flex-direction:column; gap:12px;
+      padding: calc(var(--safe-top) + 8px) calc(var(--safe-right) + 10px) calc(var(--safe-bottom) + 10px) calc(var(--safe-left) + 10px);
+    }
+
+    /* ===== Topbar ===== */
+    .topbar{
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      padding:12px 14px; display:flex; align-items:center; justify-content:space-between;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+    }
+    .logo{
+      width:28px; height:28px; border-radius:8px; background:#fff1;
+      display:grid; place-items:center; font-weight:700;
+      box-shadow: inset 0 0 0 1px #fff3;
+    }
+    .title{
+      margin:0; font-size:18px; font-weight:700;
+      text-shadow: 0 1px 0 rgba(0,0,0,.35);
+    }
+    .actions{ display:flex; gap:8px; }
+    .btn{
+      appearance:none; border:none; cursor:pointer;
+      padding:10px 12px; border-radius:12px; color:white;
+      background:rgba(255,255,255,.16);
+      font-weight:600; letter-spacing:.2px;
+    }
+    .btn:hover{ background:rgba(255,255,255,.22); }
+    .btn:active{ transform: translateY(1px); }
+
+    /* ===== Panel de controles ===== */
+    .panel{
+      background:var(--card); border:1px solid rgba(255,255,255,.06);
+      border-radius:16px; padding:12px; display:grid; gap:12px;
+    }
+    .panel h2{
+      margin:0; font-size:14px; color:var(--muted); font-weight:600; letter-spacing:.3px;
+    }
+    .control{
+      display:grid; gap:8px; background:#0f0f0f; border:1px solid rgba(255,255,255,.07);
+      border-radius:12px; padding:10px;
+    }
+    .control label{
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      font-size:13px; color:#cfd8dc;
+    }
+    .control output{
+      font-variant-numeric: tabular-nums; color:#fff;
+      background:#1a1a1a; padding:2px 8px; border-radius:8px; border:1px solid #ffffff14;
+    }
+    .range{ width:100%; accent-color: var(--accent); }
+    .hint{
+      font-size:12px; color:var(--muted);
+    }
+
+    /* ===== Visor ===== */
+    .viewer-wrap{
+      background:var(--card); border:1px solid rgba(255,255,255,.06);
+      border-radius:16px; overflow:hidden;
+    }
+    .viewer{
+      height:var(--app-h);
+      display:flex; gap:var(--gap); position:relative; background:#000;
+    }
+    /* UNA imagen SBS fija (divide en 2) */
+    .pane{
+      width:50%; height:100%;
+      background-image:url("img/1.jpg"); /* ← coloca aquí tu imagen SBS */
+      background-repeat:no-repeat;
+      background-size:200% 100%; /* 200% ancho = dos mitades */
+    }
+    .pane.left{  background-position:left  center; }
+    .pane.right{ background-position:right center; }
+
+    /* Divisor visual (útil en VR con tabique central) */
+    .divider{
+      position:absolute; top:0; bottom:0; left:calc(50% - var(--divider)/2);
+      width:var(--divider); background:rgba(255,255,255,.12); pointer-events:none;
+    }
+
+    /* ===== Footer ===== */
+    footer{
+      color:#bdbdbd; font-size:13px; text-align:center;
+      padding:6px 4px;
+    }
+    footer strong{ color:#fff; }
+
+    /* ===== Modo VR ===== */
+    body.vr .panel, body.vr footer{ display:none !important; }
+    body.vr .viewer-wrap{
+      position:fixed; inset:0; z-index:9999;
+      border:none; border-radius:0;
+    }
+    body.vr .viewer{
+      height:100vh;  /* respaldo si falla 100dvh */
+    }
+
+    @media (max-width:480px){
+      .title{ font-size:16px; }
+      .btn{ padding:9px 11px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- TOP -->
+  <header class="topbar" role="banner">
+    <div class="brand">
+      <div class="logo">S3</div>
+      <h1 class="title">Visor Estereoscópico SBS</h1>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnVR" title="Modo gafas VR">🎟️ VR</button>
+      <button class="btn" id="btnFS" title="Pantalla completa">⛶</button>
+    </div>
+  </header>
+
+  <!-- CONTROLES -->
+  <section class="panel" aria-label="Controles">
+    <h2>Ajustes rápidos</h2>
+
+    <div class="control">
+      <label for="gapRange">
+        Separación central (gap)
+        <output id="gapValue">0 px</output>
+      </label>
+      <input id="gapRange" class="range" type="range" min="0" max="60" step="1" value="0" />
+      <div class="hint">Útil si tu visor tiene tabique central o quieres más espacio entre imágenes.</div>
+    </div>
+  </section>
+
+  <!-- VISOR -->
+  <section class="viewer-wrap" aria-label="Visor">
+    <div id="viewer" class="viewer" style="--gap: 0px;">
+      <div class="pane left"></div>
+      <div class="pane right"></div>
+      <div class="divider" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    © 2025 — <strong>Edgar Hernández Mendoza</strong>. Proyecto visor SBS.
+  </footer>
+
+  <script>
+    // Altura real en móviles (evita “salto” por UI del navegador)
+    function setAppHeight(){
+      const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      document.documentElement.style.setProperty("--app-h", h + "px");
+    }
+    setAppHeight();
+    window.addEventListener("resize", setAppHeight);
+    window.addEventListener("orientationchange", () => setTimeout(setAppHeight, 200));
+
+    // Control de separación (gap)
+    const viewer   = document.getElementById("viewer");
+    const gapRange = document.getElementById("gapRange");
+    const gapValue = document.getElementById("gapValue");
+
+    function applyGap(){
+      const v = parseInt(gapRange.value, 10) || 0;
+      viewer.style.setProperty("--gap", v + "px");
+      gapValue.textContent = v + " px";
+    }
+    gapRange.addEventListener("input", applyGap);
+    applyGap();
+
+    // Pantalla completa
+    document.getElementById("btnFS").addEventListener("click", async ()=>{
+      try{
+        if(!document.fullscreenElement){
+          await document.documentElement.requestFullscreen();
+          if(screen.orientation?.lock){ try{ await screen.orientation.lock('landscape'); }catch(_){ } }
+        } else {
+          await document.exitFullscreen();
+        }
+      }catch(_){}
+    });
+
+    // Modo VR: oculta UI y ocupa toda la pantalla
+    let wakeLock = null;
+    async function requestWakeLock(){
+      try{
+        if('wakeLock' in navigator && !wakeLock){
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener?.('release', ()=> wakeLock=null);
+        }
+      }catch(_){}
+    }
+    async function releaseWakeLock(){
+      try{ await wakeLock?.release(); }catch(_){}
+      wakeLock = null;
+    }
+
+    async function enterVR(){
+      document.body.classList.add('vr');
+      try{
+        if(!document.fullscreenElement){ await document.documentElement.requestFullscreen(); }
+        if(screen.orientation?.lock){ try{ await screen.orientation.lock('landscape'); }catch(_){ } }
+      }catch(_){}
+      await requestWakeLock();
+      setAppHeight();
+    }
+    async function exitVR(){
+      document.body.classList.remove('vr');
+      await releaseWakeLock();
+      try{ if(document.fullscreenElement){ await document.exitFullscreen(); } }catch(_){}
+      setAppHeight();
+    }
+
+    document.getElementById("btnVR").addEventListener("click", async ()=>{
+      if(document.body.classList.contains('vr')) await exitVR();
+      else await enterVR();
+    });
+
+    // Reintentar wake lock al volver a la pestaña
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.visibilityState === 'visible' && document.body.classList.contains('vr')){
+        requestWakeLock();
+      }
+    });
+  </script>
+</body>
+</html>
